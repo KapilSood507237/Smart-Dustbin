@@ -1,0 +1,133 @@
+//.c code for project
+
+#include <reg52.h>
+sbit IR1=P2^6; //IR for waste
+sbit IR2=P2^7; // IR for person
+sbit LED1=P1^3; // RED led
+sbit LED2=P1^4; // GREEN led
+sbit motorA = P2^0; //Motor switch1
+sbit motorB = P2^1; //Motor switch2
+sbit SW1 = P1^0;
+sbit SW2 = P1^1;
+unsigned char *number="*"; //Replace * by phone number to which sms has to be sent
+void send_str(unsigned char *str);
+void send_char(unsigned char chr);
+void Uart_Init();
+void Gsm_Init();
+void sendsms_full();
+void sendsms_empty();
+void delay(unsigned int itime);
+void main(){
+int j=1;
+int k=0;
+while(1){
+  if(IR1 == 0) //if dustbin full
+   {
+     motorA=0;
+     motorB=0;
+     LED1 = 0; //red led ON
+     LED2 = 1; //green led off
+      if(j == 1)
+      {
+      Uart_Init(); //initialize uart
+      Gsm_Init(); //initialize gsm module
+      sendsms_full(); //send “Dustbin is full” sms to number
+      delay(1000);
+       j=0;
+        k=1;
+    }
+ }
+ else
+ {
+ if(k == 1)
+    {
+      Uart_Init(); //initialize uart
+      Gsm_Init(); //initialize gsm module
+      sendsms_empty(); // send “Garbage collected” sms to number
+      k=0;
+    }
+   LED1 = 1; //red led off
+   LED2 = 0; //green ON
+   j=1;
+  }
+ if(IR2 == 0) //if person detected
+{
+ motorA = 1; //Rotate motor clockwise for 5 seconds to open lid
+ motorB = 0;
+ delay(5000);
+ motorA = 0; //keep the lid open for 10 seconds
+ motorB = 0;
+ delay(10000);
+ motorA = 0;
+ motorB = 1;
+ delay(5000); //Rotate motor anticlockwise for 5 seconds to close lid
+ motorA = 0;
+ motorB = 0;
+ }
+ else{
+    motorA = 0;
+    motorB = 0;
+    }
+  }  
+}
+void delay(unsigned int itime) //Delay of 1ms
+{
+int i,j;
+for(i=0;i<itime;i++)
+for(j=0;j<120;j++);
+}
+void Uart_Init(){ //Uart Initialization
+SCON=0x50; //For both sending and receiving data serially
+TMOD=0x20; //Timer 1 mode 2
+TH1=0xFD;
+TR1=1;
+}
+void Gsm_Init(){ //GSM Initialization
+send_str("ATE0");
+send_char(0x0D);
+delay(100);
+send_str("AT+IPR=9600"); // Send AT commands to confirm connection
+send_char(0x0D);
+delay(100);
+send_str("AT");
+send_char(0x0D);
+delay(100);
+}
+void send_char(unsigned char chr){
+      SBUF=chr;
+      while(TI==0);
+      TI=0;
+ }
+void send_str(unsigned char *str){
+while(*str){
+      send_char(*str++);
+     }
+}
+void sendsms_full(){ //function to send dustbin is full sms
+send_str("AT+CMGF=1");
+send_char(0x0D);
+delay(200);
+send_str("AT+CMGS=");
+send_char(0x22);
+send_str(number);
+send_char(0x22);
+send_char(0x0D);
+delay(1000);
+send_str("Dustbin is full!");
+send_char(0x1A);
+delay(500);
+}
+void sendsms_empty(){ //function to send dustbin is empty sms
+send_str("AT+CMGF=1");
+send_char(0x0D);
+delay(200);
+send_str("AT+CMGS=");
+send_char(0x22);
+send_str(number);
+send_char(0x22);
+send_char(0x0D);
+delay(1000);
+send_str("Garbage Collected! Dustbin is Empty");
+send_char(0x1A);
+delay(500);
+}
